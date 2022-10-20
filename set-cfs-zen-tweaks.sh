@@ -23,6 +23,7 @@ WAKEUP_GRANULARITY_MS=0.5
 MIGRATION_COST_MS=0.25
 BANDWIDTH_SIZE_MS=3
 NR_MIGRATE=64
+SPLIT_LOCK_MITIGATE=0
 
 echo "Targeted preemption latency for CPU-bound tasks: ${LATENCY_MS}ms"
 echo "Minimal preemption granularity for CPU-bound tasks: ${MIN_GRANULARITY_MS}ms"
@@ -30,6 +31,7 @@ echo "Wake-up granularity: ${WAKEUP_GRANULARITY_MS}ms"
 echo "Task migration cost: ${MIGRATION_COST_MS}ms"
 echo "Amount of runtime to allocate from global to local pool: ${BANDWIDTH_SIZE_MS}ms"
 echo "Number of tasks to iterate in a single balance run: ${NR_MIGRATE}"
+echo "Misery mode which penalises split locks: ${SPLIT_LOCK_MITIGATE}"
 
 call_gawk() {
   printf '%s' "$(gawk 'BEGIN {print '"${1}"'}')"
@@ -45,6 +47,7 @@ WAKEUP_GRANULARITY_NS_FILE="/sys/kernel/debug/sched/wakeup_granularity_ns"
 MIGRATION_COST_NS_FILE="/sys/kernel/debug/sched/migration_cost_ns"
 BANDWIDTH_SIZE_US_FILE="/proc/sys/kernel/sched_cfs_bandwidth_slice_us"
 NR_MIGRATE_FILE="/sys/kernel/debug/sched/nr_migrate"
+SPLIT_LOCK_MITIGATE_FILE="/proc/sys/kernel/split_lock_mitigate"
 
 if [ ! -f "$LATENCY_NS_FILE" ]; then
     echo "Detected kernel <5.13. Using legacy locations."
@@ -61,3 +64,7 @@ printf '%s' "$( call_gawk "int(${WAKEUP_GRANULARITY_MS} * ${MODIFIER})" )" > "$W
 printf '%s' "$( call_gawk "int(${MIGRATION_COST_MS} * ${MODIFIER})" )" > "$MIGRATION_COST_NS_FILE"
 printf '%s' "$( call_gawk "int(${BANDWIDTH_SIZE_MS} * 1000)" )" > "$BANDWIDTH_SIZE_US_FILE"
 printf '%s' "$NR_MIGRATE" > "$NR_MIGRATE_FILE"
+if [ -f "$SPLIT_LOCK_MITIGATE_FILE" ]; then
+  echo "Detected kernel >=6.2. Configuring Split Lock mitigation introduced in 5.19"
+  printf '%s' "$SPLIT_LOCK_MITIGATE" > "$SPLIT_LOCK_MITIGATE_FILE"
+fi
